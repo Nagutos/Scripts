@@ -14,11 +14,13 @@ Most of these scripts rely on open-source command-line tools. Make sure you have
 * `ffmpeg` / `ffprobe` (General video/audio processing)
 * `mkvtoolnix` (Tools like `mkvmerge` and `mkvextract`)
 * `jq` (Command-line JSON processor)
+* `FFcuesplitter` (Command-line cue splitter)
 * `scxvid` (Keyframe generation [Original .bat script](https://unanimated.github.io/scxvid.htm))<br>
 On linux you must manualy compile [scxvid.c](https://github.com/soyokaze/SCXvid-standalone) : 
 `
 cc -o scxvid scxvid.c -lxvidcore
 `
+
 
 ## General Usage
 Before running a script for the first time, make sure it has execution permissions:
