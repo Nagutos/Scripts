@@ -28,11 +28,20 @@ echo -n "Extract Subtitles (y/n)? " && read -r want_subs
 echo -n "Extract Fonts (y/n)? " && read -r want_fonts
 echo -n "Language Filter (e.g., jpn, fre) [Leave empty for ALL]: " && read -r target_lang
 
+# Normalize yes/no answers: any input starting with 'y'/'Y' counts as yes,
+# so 'y', 'Y', 'yes', 'YES' all work; everything else is treated as no.
+[[ "${want_audio:l}" == y* ]] && want_audio="y" || want_audio="n"
+[[ "${want_subs:l}"  == y* ]] && want_subs="y"  || want_subs="n"
+[[ "${want_fonts:l}" == y* ]] && want_fonts="y" || want_fonts="n"
+
 # Dictionary mapping codec IDs to file extensions
 typeset -A ext_map
 ext_map=(
     "A_AAC" "aac" "A_AC3" "ac3" "A_EAC3" "eac3" "A_FLAC" "flac" "A_OPUS" "opus"
-    "S_TEXT/ASS" "ass" "S_TEXT/SSA" "ssa" "S_TEXT/UTF8" "srt" "S_HDMV/PGS" "sup"
+    "A_DTS" "dts" "A_TRUEHD" "thd" "A_MP3" "mp3" "A_MPEG/L3" "mp3"
+    "A_PCM/INT/LIT" "wav" "A_VORBIS" "ogg"
+    "S_TEXT/ASS" "ass" "S_TEXT/SSA" "ssa" "S_TEXT/UTF8" "srt" "S_TEXT/WEBVTT" "vtt"
+    "S_HDMV/PGS" "sup" "S_VOBSUB" "sub"
 )
 
 # ==============================================================================

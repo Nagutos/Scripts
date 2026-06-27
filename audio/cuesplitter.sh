@@ -1,4 +1,4 @@
-#!/usr/bin/zsh
+#!/usr/bin/env zsh
 
 # ==============================================================================
 # Script: FLAC Cue Splitter
@@ -73,14 +73,15 @@ for dir in "${search_dirs[@]}"; do
 
         echo -e "\n${CYAN}Processing:${NC} $cue_path"
 
-        # Enter the directory of the .cue file to resolve relative audio paths safely
-        pushd "$cue_dir" > /dev/null
+        # Enter the directory of the .cue file to resolve relative audio paths safely.
+        # Skip this file if we cannot enter the directory (avoids running in the wrong place).
+        if ! pushd "$cue_dir" > /dev/null; then
+            echo -e "  ${RED}[!] Cannot access directory:${NC} $cue_dir"
+            continue
+        fi
 
         # Run the extraction command (-del handles the cleanup automatically)
-        ffcuesplitter -i "$cue_file" -f flac -ce UTF-8 -del > /dev/null 2>&1
-
-        # Check if the command was successful
-        if [[ $? -eq 0 ]]; then
+        if ffcuesplitter -i "$cue_file" -f flac -ce UTF-8 -del > /dev/null 2>&1; then
             echo -e "  ${GREEN}[+] Successfully split & cleaned:${NC} $cue_dir"
         else
             echo -e "  ${RED}[!] Failed to split:${NC} $cue_file"

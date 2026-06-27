@@ -1,4 +1,4 @@
-#!/usr/bin/zsh
+#!/usr/bin/env zsh
 
 # ==============================================================================
 # Script: CBR to CBZ Converter
@@ -87,18 +87,14 @@ for cbr in "$@"; do
     fi
 
     echo -e "  ${CYAN}[1/3]${NC} Extracting archive..."
-    7z x "$cbr" -o"$tmp_dir" -y > /dev/null
-
-    if [[ $? -ne 0 ]]; then
+    if ! 7z x "$cbr" -o"$tmp_dir" -y > /dev/null; then
         echo -e "  ${RED}[!] Extraction failed for $cbr${NC}"
         rm -rf "$tmp_dir"
         continue
     fi
 
     echo -e "  ${CYAN}[2/3]${NC} Compressing to CBZ..."
-    7z a -tzip "$cbz" "$tmp_dir/"* -mx=9 > /dev/null
-
-    if [[ $? -ne 0 ]]; then
+    if ! 7z a -tzip "$cbz" "$tmp_dir/"* -mx=9 > /dev/null; then
         echo -e "  ${RED}[!] Compression failed. Removing incomplete CBZ...${NC}"
         rm -f "$cbz"
         rm -rf "$tmp_dir"
@@ -107,12 +103,10 @@ for cbr in "$@"; do
 
     ### Security: Test the integrity of the newly created CBZ archive
     echo -e "  ${CYAN}[3/3]${NC} Verifying archive integrity..."
-    7z t "$cbz" > /dev/null
-
-    if [[ $? -eq 0 ]]; then
+    if 7z t "$cbz" > /dev/null; then
         echo -e "  ${GREEN}[+] Successfully created:${NC} ${cbz:t}"
     else
-        echo -e "  ${RED}[!] Compression failed for $cbz${NC}"
+        echo -e "  ${RED}[!] Integrity check failed for $cbz${NC}"
         rm -f "$cbz"
     fi
 

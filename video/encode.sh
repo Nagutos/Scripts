@@ -1,8 +1,12 @@
 #!/usr/bin/env zsh
 
+# Échoue le pipeline si vspipe/ffmpeg plante en amont (pas seulement l'encodeur).
+set -o pipefail
+
 # --- CONFIGURATION DES CHEMINS ---
-X265_PATH="$HOME/Softwares/x265-aMod-Djatom"
-X264_PATH="$HOME/Softwares/x264-aMod-Dajtom"
+# Surchargeables via l'environnement : X265_PATH=/chemin/x265 ./encode.sh ...
+X265_PATH="${X265_PATH:-$HOME/Softwares/x265-aMod-Djatom}"
+X264_PATH="${X264_PATH:-$HOME/Softwares/x264-aMod-Dajtom}"
 
 # --- COULEURS ---
 GREEN='\033[0;32m'
@@ -103,6 +107,36 @@ fi
 
 if [[ ! -f "$file" ]]; then
     echo -e "${RED}Erreur : Le fichier '$file' n'existe pas.${NC}"
+    exit 1
+fi
+
+# Au moins une opération doit être demandée
+if [[ "$do_x265" != true && "$do_x264" != true && "$do_opus" != true && "$do_flac" != true ]]; then
+    echo -e "${RED}Erreur : Aucune opération sélectionnée (vidéo et/ou audio).${NC}"
+    show_help
+    exit 1
+fi
+
+# --- Vérification des dépendances selon les opérations demandées ---
+if [[ "${file:e}" == "vpy" ]]; then
+    if ! command -v vspipe &> /dev/null; then
+        echo -e "${RED}Erreur : 'vspipe' (VapourSynth) est requis pour les scripts .vpy.${NC}"
+        exit 1
+    fi
+elif ! command -v ffmpeg &> /dev/null; then
+    echo -e "${RED}Erreur : 'ffmpeg' est requis mais n'est pas installé.${NC}"
+    exit 1
+fi
+if [[ "$do_x265" == true && ! -x "$X265_PATH" ]]; then
+    echo -e "${RED}Erreur : encodeur x265 introuvable : '$X265_PATH'${NC}"
+    exit 1
+fi
+if [[ "$do_x264" == true && ! -x "$X264_PATH" ]]; then
+    echo -e "${RED}Erreur : encodeur x264 introuvable : '$X264_PATH'${NC}"
+    exit 1
+fi
+if [[ ( "$do_opus" == true || "$do_flac" == true ) ]] && ! command -v ffmpeg &> /dev/null; then
+    echo -e "${RED}Erreur : 'ffmpeg' est requis pour l'encodage audio.${NC}"
     exit 1
 fi
 
