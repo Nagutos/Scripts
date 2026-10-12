@@ -32,7 +32,7 @@ if ! command -v mpv &> /dev/null; then
     exit 1
 fi
 
-if [[ $# -lt 2 ]]; then
+if [[ $# -ne 2 ]]; then
     echo -e "${RED}Error: You must provide exactly two video files.${NC}"
     echo -e "Run '${CYAN}$0 --help${NC}' for more info."
     exit 1
@@ -49,7 +49,19 @@ echo -e "  ${CYAN}[Left]${NC}  ${vid1:t}"
 echo -e "  ${CYAN}[Right]${NC} ${vid2:t}"
 echo -e "\n${GREEN}Tip: Use SPACE to pause and '.' or ',' to go frame-by-frame on both videos simultaneously!${NC}"
 
-# mpv charge la vidéo 1, ajoute la vidéo 2 en fichier externe, 
+# hstack exige deux vidéos de même hauteur : si elles diffèrent, la vidéo 2
+# est redimensionnée à la hauteur de la vidéo 1 (la référence reste intacte).
+graph="[vid1][vid2]hstack[vo]"
+if command -v ffprobe &> /dev/null; then
+    h1=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$vid1")
+    h2=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$vid2")
+    if [[ -n "$h1" && -n "$h2" && "$h1" != "$h2" ]]; then
+        echo -e "  ${CYAN}[Info]${NC}  Different heights (${h1}p / ${h2}p): scaling right video to ${h1}p"
+        graph="[vid2]scale=-2:${h1}[right];[vid1][right]hstack[vo]"
+    fi
+fi
+
+# mpv charge la vidéo 1, ajoute la vidéo 2 en fichier externe,
 # puis utilise lavfi-complex pour les coller horizontalement (hstack).
 # --pause permet de lancer MPV en pause pour avoir le temps de s'installer.
-mpv "$vid1" --external-file="$vid2" --lavfi-complex="[vid1][vid2]hstack[vo]" --pause > /dev/null 2>&1
+mpv "$vid1" --external-file="$vid2" --lavfi-complex="$graph" --pause > /dev/null 2>&1

@@ -6,7 +6,7 @@ set -o pipefail
 # --- CONFIGURATION DES CHEMINS ---
 # Surchargeables via l'environnement : X265_PATH=/chemin/x265 ./encode.sh ...
 X265_PATH="${X265_PATH:-$HOME/Softwares/x265-aMod-Djatom}"
-X264_PATH="${X264_PATH:-$HOME/Softwares/x264-aMod-Dajtom}"
+X264_PATH="${X264_PATH:-$HOME/Softwares/x264-aMod-Djatom}"
 
 # --- COULEURS ---
 GREEN='\033[0;32m'
@@ -58,7 +58,7 @@ encode_audio_flac() {
 # --- PARSEUR DE COMMANDES ---
 
 show_help() {
-    echo -e "${BLUE}Usage:${NC} enco [options] <fichier_ou_script.vpy>"
+    echo -e "${BLUE}Usage:${NC} enco [options] <fichier_ou_script.vpy> [fichier2 ...]"
     echo -e "\n${CYAN}Options Vidéo:${NC}"
     echo "  -v, --x265    Encoder en x265 (Profil Djatom)"
     echo "  -V, --x264    Encoder en x264 (Profil Djatom Animation)"
@@ -68,6 +68,8 @@ show_help() {
     echo -e "\n${CYAN}Raccourcis pratiques:${NC}"
     echo "  -av ou -va    Fait la vidéo x265 ET l'audio Opus"
     echo "  -aV ou -Va    Fait la vidéo x264 ET l'audio Opus"
+    echo -e "\n${CYAN}Note:${NC} un script .vpy ne contient pas d'audio : les options audio"
+    echo "  sont ignorées pour ces fichiers."
 }
 
 # Initialisation des variables
@@ -75,7 +77,7 @@ do_x265=false
 do_x264=false
 do_opus=false
 do_flac=false
-file=""
+files=()
 
 # Analyse intelligente des arguments
 while [[ $# -gt 0 ]]; do
@@ -93,22 +95,24 @@ while [[ $# -gt 0 ]]; do
         
         -h|--help) show_help; exit 0 ;;
         -*) echo -e "${RED}Option non reconnue : $1${NC}"; exit 1 ;;
-        *) file="$1" ;;
+        *) files+=("$1") ;;
     esac
     shift # Passe à l'argument suivant
 done
 
 # Vérification finale
-if [[ -z "$file" ]]; then
+if [[ ${#files[@]} -eq 0 ]]; then
     echo -e "${RED}Erreur : Aucun fichier spécifié.${NC}"
     show_help
     exit 1
 fi
 
-if [[ ! -f "$file" ]]; then
-    echo -e "${RED}Erreur : Le fichier '$file' n'existe pas.${NC}"
-    exit 1
-fi
+for file in "${files[@]}"; do
+    if [[ ! -f "$file" ]]; then
+        echo -e "${RED}Erreur : Le fichier '$file' n'existe pas.${NC}"
+        exit 1
+    fi
+done
 
 # Au moins une opération doit être demandée
 if [[ "$do_x265" != true && "$do_x264" != true && "$do_opus" != true && "$do_flac" != true ]]; then
@@ -118,12 +122,17 @@ if [[ "$do_x265" != true && "$do_x264" != true && "$do_opus" != true && "$do_fla
 fi
 
 # --- Vérification des dépendances selon les opérations demandées ---
-if [[ "${file:e}" == "vpy" ]]; then
-    if ! command -v vspipe &> /dev/null; then
-        echo -e "${RED}Erreur : 'vspipe' (VapourSynth) est requis pour les scripts .vpy.${NC}"
-        exit 1
-    fi
-elif ! command -v ffmpeg &> /dev/null; then
+has_vpy=false
+has_media=false
+for file in "${files[@]}"; do
+    [[ "${file:e}" == "vpy" ]] && has_vpy=true || has_media=true
+done
+
+if [[ "$has_vpy" == true ]] && ! command -v vspipe &> /dev/null; then
+    echo -e "${RED}Erreur : 'vspipe' (VapourSynth) est requis pour les scripts .vpy.${NC}"
+    exit 1
+fi
+if [[ "$has_media" == true ]] && ! command -v ffmpeg &> /dev/null; then
     echo -e "${RED}Erreur : 'ffmpeg' est requis mais n'est pas installé.${NC}"
     exit 1
 fi
@@ -135,15 +144,34 @@ if [[ "$do_x264" == true && ! -x "$X264_PATH" ]]; then
     echo -e "${RED}Erreur : encodeur x264 introuvable : '$X264_PATH'${NC}"
     exit 1
 fi
-if [[ ( "$do_opus" == true || "$do_flac" == true ) ]] && ! command -v ffmpeg &> /dev/null; then
-    echo -e "${RED}Erreur : 'ffmpeg' est requis pour l'encodage audio.${NC}"
+
+# Exécution des tâches : on continue en cas d'échec et on fait le bilan à la fin.
+failures=()
+
+run_task() {
+    local label=$1; shift
+    if ! "$@"; then
+        echo -e "${RED}[!] Échec : $label${NC}"
+        failures+=("$label")
+    fi
+}
+
+for file in "${files[@]}"; do
+    [[ "$do_x265" == true ]] && run_task "x265 — $file" encode_video_x265 "$file"
+    [[ "$do_x264" == true ]] && run_task "x264 — $file" encode_video_x264 "$file"
+
+    if [[ "$do_opus" == true || "$do_flac" == true ]] && [[ "${file:e}" == "vpy" ]]; then
+        echo -e "${RED}[-] Audio ignoré pour '$file' : un script .vpy ne contient pas d'audio.${NC}"
+        continue
+    fi
+    [[ "$do_opus" == true ]] && run_task "Opus — $file" encode_audio_opus "$file"
+    [[ "$do_flac" == true ]] && run_task "FLAC — $file" encode_audio_flac "$file"
+done
+
+if [[ ${#failures[@]} -gt 0 ]]; then
+    echo -e "\n${RED}Terminé avec ${#failures[@]} échec(s) :${NC}"
+    printf '  - %s\n' "${failures[@]}"
     exit 1
 fi
-
-# Exécution des tâches
-[[ "$do_x265" == true ]] && encode_video_x265 "$file"
-[[ "$do_x264" == true ]] && encode_video_x264 "$file"
-[[ "$do_opus" == true ]] && encode_audio_opus "$file"
-[[ "$do_flac" == true ]] && encode_audio_flac "$file"
 
 echo -e "\n${GREEN}Terminé !${NC}"

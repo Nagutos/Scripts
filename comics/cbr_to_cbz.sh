@@ -93,8 +93,16 @@ for cbr in "$@"; do
         continue
     fi
 
+    # (DN): include hidden files and expand to nothing instead of aborting if empty
+    extracted=("$tmp_dir/"*(DN))
+    if [[ ${#extracted[@]} -eq 0 ]]; then
+        echo -e "  ${RED}[!] Archive is empty: $cbr${NC}"
+        rm -rf "$tmp_dir"
+        continue
+    fi
+
     echo -e "  ${CYAN}[2/3]${NC} Compressing to CBZ..."
-    if ! 7z a -tzip "$cbz" "$tmp_dir/"* -mx=9 > /dev/null; then
+    if ! 7z a -tzip "$cbz" "${extracted[@]}" -mx=9 > /dev/null; then
         echo -e "  ${RED}[!] Compression failed. Removing incomplete CBZ...${NC}"
         rm -f "$cbz"
         rm -rf "$tmp_dir"

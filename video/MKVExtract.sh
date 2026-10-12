@@ -75,8 +75,8 @@ for f in *.mkv; do
         t_codec=$parts[3]
         t_lang=$parts[4]
         
-        # Sanitize track name (replace spaces and slashes with underscores)
-        t_name=${parts[5]//[ \/]/__}
+        # Sanitize track name (replace spaces and slashes with an underscore)
+        t_name=${parts[5]//[ \/]/_}
 
         # --- Audio Delay Detection ---
         delay_tag=""
@@ -122,7 +122,12 @@ for f in *.mkv; do
         while read -r font_line; do
             [[ -z "$font_line" ]] && continue
             f_id="${font_line%%|*}"
-            f_name="${font_line#*|}"
+            # Keep only the file name: an attachment named "../x" must not escape the folder
+            f_name="${${font_line#*|}:t}"
+            if [[ -z "$f_name" || "$f_name" == "." || "$f_name" == ".." ]]; then
+                echo -e "  ${RED}[!]${NC} Skipping attachment $f_id with an invalid name."
+                continue
+            fi
             dest="./$f_name"
 
             if [[ ! -f "$dest" ]]; then

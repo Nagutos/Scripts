@@ -52,7 +52,14 @@ for video in "$@"; do
     echo "------------------------------------------------------------"
 
     # Execute ffmpeg to decode and scale the video, piping the output to scxvid.
-    if ffmpeg -i "$video" -f yuv4mpegpipe -vf scale=640:360 -pix_fmt yuv420p -fps_mode drop - 2>/dev/null | "$SCXVID" "$output_log"; then
+    # -map 0:v:0 : only the first video stream (ignores cover art / extra streams).
+    # scxvid reads the y4m stream from stdin and takes the log path as its only argument.
+    if ffmpeg -i "$video" \
+        -map 0:v:0 \
+        -f yuv4mpegpipe \
+        -vf "scale=640:360" \
+        -pix_fmt yuv420p \
+        - 2>/dev/null | "$SCXVID" "$output_log"; then
         echo "[SUCCESS] Keyframes generated for: $base_name"
     else
         echo "[ERROR] Failed to generate keyframes for: $video"

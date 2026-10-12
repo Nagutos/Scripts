@@ -29,7 +29,9 @@ A flexible video/audio encoder wrapping custom `x265`/`x264` builds and `ffmpeg`
   * x265 video: `./encode.sh -v input.mkv`
   * x264 video (animation profile): `./encode.sh -V input.mkv`
   * Audio Opus / FLAC: `./encode.sh -a input.mkv` / `./encode.sh -A input.mkv`
-  * Combined (video + audio): `./encode.sh -av input.vpy`
+  * Combined (video + audio): `./encode.sh -av input.mkv`
+  * Several files at once: `./encode.sh -v ep01.mkv ep02.mkv`
+  * `.vpy` scripts carry no audio: audio options are skipped for them.
   * Full options: `./encode.sh --help`
 
 ### 4. `mpv-SideBySide.sh`
